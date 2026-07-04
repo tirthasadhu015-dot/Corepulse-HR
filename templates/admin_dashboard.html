@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard | AlignHR{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+    <div>
+        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-teal">Administrative Command Center</p>
+        <h1 class="mt-2 text-3xl font-semibold tracking-tight">People Operations</h1>
+        <p class="mt-1 text-slate-500">RBAC, attendance audits, leave verification, and payroll matrix control.</p>
+    </div>
+</div>
+
+<section class="grid gap-4 md:grid-cols-4">
+    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <p class="text-sm text-slate-500">Employees</p>
+        <p class="mt-2 text-3xl font-semibold">{{ metrics.employees }}</p>
+    </div>
+    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <p class="text-sm text-slate-500">HR/Admin</p>
+        <p class="mt-2 text-3xl font-semibold">{{ metrics.admins }}</p>
+    </div>
+    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <p class="text-sm text-slate-500">Present Today</p>
+        <p class="mt-2 text-3xl font-semibold text-emerald-700">{{ metrics.present_today }}</p>
+    </div>
+    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <p class="text-sm text-slate-500">Pending Leaves</p>
+        <p class="mt-2 text-3xl font-semibold text-amber-600">{{ metrics.pending_leaves }}</p>
+    </div>
+</section>
+
+<section class="mt-6 grid gap-6 xl:grid-cols-[1.3fr_.7fr]">
+    <div class="rounded-lg border border-slate-200 bg-white shadow-sm">
+        <div class="border-b border-slate-200 p-5">
+            <h2 class="text-lg font-semibold">Corporate Profiles</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200 text-sm">
+                <thead class="bg-slate-50 text-left text-xs uppercase tracking-wider text-slate-500">
+                    <tr>
+                        <th class="px-5 py-3">Employee</th>
+                        <th class="px-5 py-3">Role</th>
+                        <th class="px-5 py-3">Contact</th>
+                        <th class="px-5 py-3">Payroll Matrix</th>
+                        <th class="px-5 py-3">Edit</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for user in users %}
+                        <tr class="align-top">
+                            <td class="px-5 py-4">
+                                <p class="font-semibold">{{ user.profile.full_name if user.profile else user.email }}</p>
+                                <p class="text-slate-500">{{ user.employee_id }} · {{ user.profile.job_title if user.profile else "" }}</p>
+                            </td>
+                            <td class="px-5 py-4">
+                                <span class="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold uppercase">{{ user.role }}</span>
+                            </td>
+                            <td class="px-5 py-4 text-slate-600">
+                                <p>{{ user.email }}</p>
+                                <p>{{ user.profile.phone if user.profile and user.profile.phone else "No phone" }}</p>
+                            </td>
+                            <td class="px-5 py-4 font-medium text-slate-700">
+                                {{ user.profile.salary_structure if user.profile and user.profile.salary_structure else "Not configured" }}
+                            </td>
+                            <td class="px-5 py-4">
+                                <details class="group">
+                                    <summary class="cursor-pointer rounded-lg border border-slate-300 px-3 py-2 text-center font-semibold hover:bg-slate-50">
+                                        <i class="fa-solid fa-pen-to-square"></i>
+                                    </summary>
+                                    <form action="{{ url_for('admin_update_profile', user_id=user.id) }}" method="post" class="mt-3 grid min-w-80 gap-2 rounded-lg bg-slate-50 p-3">
+                                        <input name="full_name" value="{{ user.profile.full_name if user.profile else '' }}" class="rounded-md border border-slate-300 px-3 py-2">
+                                        <input name="phone" value="{{ user.profile.phone if user.profile else '' }}" placeholder="Phone" class="rounded-md border border-slate-300 px-3 py-2">
+                                        <input name="job_title" value="{{ user.profile.job_title if user.profile else '' }}" placeholder="Job title" class="rounded-md border border-slate-300 px-3 py-2">
+                                        <input name="salary_structure" value="{{ user.profile.salary_structure if user.profile else '' }}" placeholder="Salary structure" class="rounded-md border border-slate-300 px-3 py-2">
+                                        <textarea name="address" rows="2" placeholder="Address" class="rounded-md border border-slate-300 px-3 py-2">{{ user.profile.address if user.profile else "" }}</textarea>
+                                        <select name="role" class="rounded-md border border-slate-300 px-3 py-2">
+                                            {% for role in ["employee", "hr", "admin"] %}
+                                                <option value="{{ role }}" {% if user.role == role %}selected{% endif %}>{{ role }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        <button class="rounded-md bg-ink px-3 py-2 font-semibold text-white" type="submit">Save</button>
+                                    </form>
+                                </details>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="space-y-6">
+        <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 class="text-lg font-semibold">Today's Clock-ins</h2>
+            <div class="mt-4 space-y-3">
+                {% for log in today_logs %}
+                    <div class="rounded-lg bg-slate-50 p-3 text-sm">
+                        <div class="flex items-center justify-between">
+                            <p class="font-semibold">{{ log.user.profile.full_name }}</p>
+                            <span class="text-xs font-semibold text-slate-500">{{ log.status }}</span>
+                        </div>
+                        <p class="mt-1 text-slate-500">
+                            {{ log.check_in.strftime("%H:%M") if log.check_in else "--:--" }}
+                            to
+                            {{ log.check_out.strftime("%H:%M") if log.check_out else "active" }}
+                        </p>
+                    </div>
+                {% else %}
+                    <p class="text-sm text-slate-500">No clock-ins recorded today.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 class="text-lg font-semibold">Leave Verification</h2>
+            <div class="mt-4 space-y-4">
+                {% for leave in pending_leaves %}
+                    <div class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <p class="font-semibold">{{ leave.user.profile.full_name }}</p>
+                                <p class="text-slate-600">{{ leave.leave_type }} · {{ leave.start_date }} to {{ leave.end_date }}</p>
+                                {% if leave.remarks %}<p class="mt-2 text-slate-700">{{ leave.remarks }}</p>{% endif %}
+                            </div>
+                            <span class="rounded-full bg-white px-2 py-1 text-xs font-semibold text-amber-700">{{ leave.status }}</span>
+                        </div>
+                        <div class="mt-3 grid gap-2 sm:grid-cols-2">
+                            <form action="{{ url_for('leave_approve', leave_id=leave.id) }}" method="post" class="space-y-2">
+                                <input name="admin_comment" placeholder="Approval note" class="w-full rounded-md border border-slate-300 px-3 py-2">
+                                <button class="w-full rounded-md bg-emerald-600 px-3 py-2 font-semibold text-white" type="submit">
+                                    <i class="fa-solid fa-check mr-1"></i> Approve
+                                </button>
+                            </form>
+                            <form action="{{ url_for('leave_reject', leave_id=leave.id) }}" method="post" class="space-y-2">
+                                <input name="admin_comment" placeholder="Rejection note" class="w-full rounded-md border border-slate-300 px-3 py-2">
+                                <button class="w-full rounded-md bg-rose-600 px-3 py-2 font-semibold text-white" type="submit">
+                                    <i class="fa-solid fa-xmark mr-1"></i> Reject
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                {% else %}
+                    <p class="text-sm text-slate-500">No pending requests.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="mt-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+    <h2 class="text-lg font-semibold">Recent Leave Lifecycle</h2>
+    <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {% for leave in all_leaves %}
+            <div class="rounded-lg bg-slate-50 p-3 text-sm">
+                <div class="flex items-center justify-between">
+                    <p class="font-semibold">{{ leave.user.profile.full_name }}</p>
+                    <span class="rounded-full px-2 py-1 text-xs font-semibold {% if leave.status == 'Approved' %}bg-emerald-100 text-emerald-700{% elif leave.status == 'Rejected' %}bg-rose-100 text-rose-700{% else %}bg-amber-100 text-amber-700{% endif %}">{{ leave.status }}</span>
+                </div>
+                <p class="mt-1 text-slate-500">{{ leave.leave_type }} · {{ leave.start_date }} to {{ leave.end_date }}</p>
+                {% if leave.admin_comment %}<p class="mt-2 text-slate-600">{{ leave.admin_comment }}</p>{% endif %}
+            </div>
+        {% else %}
+            <p class="text-sm text-slate-500">Leave history will appear here.</p>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

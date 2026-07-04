@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}AlignHR{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        ink: "#101828",
+                        panel: "#ffffff",
+                        mist: "#f5f7fb",
+                        brand: "#2563eb",
+                        teal: "#0f766e",
+                        coral: "#e11d48"
+                    },
+                    boxShadow: {
+                        soft: "0 18px 60px rgba(16, 24, 40, 0.10)"
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
+        .flash-message { animation: slideDown .28s ease-out both; }
+    </style>
+</head>
+<body class="min-h-screen bg-mist text-ink antialiased">
+    <header class="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
+        <nav class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+            <a href="{{ url_for('index') }}" class="flex items-center gap-3 font-semibold tracking-tight">
+                <span class="grid h-10 w-10 place-items-center rounded-lg bg-brand text-white shadow-sm">
+                    <i class="fa-solid fa-people-group"></i>
+                </span>
+                <span class="text-xl">AlignHR</span>
+            </a>
+            <div class="flex items-center gap-3 text-sm">
+                {% if current_user.is_authenticated %}
+                    <span class="hidden text-slate-500 sm:inline">{{ current_user.email }}</span>
+                    <a href="{{ url_for('logout') }}" class="rounded-lg border border-slate-300 px-3 py-2 font-medium hover:bg-slate-50">
+                        <i class="fa-solid fa-right-from-bracket mr-1"></i> Logout
+                    </a>
+                {% else %}
+                    <span class="text-slate-500">{{ now.strftime("%d %b %Y") }}</span>
+                {% endif %}
+            </div>
+        </nav>
+    </header>
+
+    <div class="fixed left-1/2 top-20 z-50 w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 space-y-3">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                {% set styles = {
+                    "success": "border-emerald-200 bg-emerald-50 text-emerald-900",
+                    "danger": "border-rose-200 bg-rose-50 text-rose-900",
+                    "warning": "border-amber-200 bg-amber-50 text-amber-900",
+                    "info": "border-sky-200 bg-sky-50 text-sky-900"
+                } %}
+                <div class="flash-message rounded-lg border px-4 py-3 shadow-soft {{ styles.get(category, styles.get('info')) }}">
+                    <div class="flex items-start gap-3">
+                        <i class="fa-solid fa-circle-info mt-1"></i>
+                        <p class="text-sm font-medium">{{ message }}</p>
+                    </div>
+                </div>
+            {% endfor %}
+        {% endwith %}
+    </div>
+
+    <main class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        {% block content %}{% endblock %}
+    </main>
+
+    <script>
+        setTimeout(() => {
+            document.querySelectorAll(".flash-message").forEach((el) => {
+                el.style.transition = "opacity .2s ease, transform .2s ease";
+                el.style.opacity = "0";
+                el.style.transform = "translateY(-8px)";
+                setTimeout(() => el.remove(), 220);
+            });
+        }, 4200);
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block title %}Employee Dashboard | AlignHR{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+    <div>
+        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-teal">Employee Canvas</p>
+        <h1 class="mt-2 text-3xl font-semibold tracking-tight">{{ current_user.profile.full_name }}</h1>
+        <p class="mt-1 text-slate-500">{{ current_user.employee_id }} · {{ current_user.profile.job_title or "Employee" }}</p>
+    </div>
+    <div class="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm">
+        Payroll matrix: <span class="font-semibold text-slate-700">{{ current_user.profile.salary_structure or "Visible to HR only" }}</span>
+    </div>
+</div>
+
+<section class="grid gap-4 md:grid-cols-4">
+    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <p class="text-sm text-slate-500">Present Days</p>
+        <p class="mt-2 text-3xl font-semibold text-emerald-700">{{ status_counts.get("Present", 0) }}</p>
+    </div>
+    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <p class="text-sm text-slate-500">Half-days</p>
+        <p class="mt-2 text-3xl font-semibold text-amber-600">{{ status_counts.get("Half-day", 0) }}</p>
+    </div>
+    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <p class="text-sm text-slate-500">Leave Pending</p>
+        <p class="mt-2 text-3xl font-semibold text-brand">{{ leave_counts.get("Pending", 0) }}</p>
+    </div>
+    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <p class="text-sm text-slate-500">Approved Leave</p>
+        <p class="mt-2 text-3xl font-semibold text-teal">{{ leave_counts.get("Approved", 0) }}</p>
+    </div>
+</section>
+
+<section class="mt-6 grid gap-6 lg:grid-cols-[.85fr_1.15fr]">
+    <div class="space-y-6">
+        <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <div class="flex items-center justify-between">
+                <h2 class="text-lg font-semibold">Quick Check-in</h2>
+                <span id="attendanceBadge" class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                    {{ today_record.status if today_record else "Ready" }}
+                </span>
+            </div>
+            <div class="mt-5 grid gap-3 sm:grid-cols-2">
+                <select id="attendanceStatus" class="rounded-lg border border-slate-300 px-3 py-3 outline-none focus:border-brand focus:ring-4 focus:ring-blue-100">
+                    {% for status in ["Present", "Half-day", "Leave", "Absent"] %}
+                        <option value="{{ status }}" {% if today_record and today_record.status == status %}selected{% endif %}>{{ status }}</option>
+                    {% endfor %}
+                </select>
+                <button id="attendanceButton" class="rounded-lg bg-brand px-4 py-3 font-semibold text-white hover:bg-blue-700">
+                    <i class="fa-solid fa-fingerprint mr-2"></i>
+                    {{ "Check out" if today_record and today_record.check_in and not today_record.check_out else "Check in" }}
+                </button>
+            </div>
+            <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
+                <div class="rounded-lg bg-slate-50 p-3">
+                    <p class="text-slate-500">Check-in</p>
+                    <p id="checkInText" class="font-semibold">{{ today_record.check_in.strftime("%H:%M") if today_record and today_record.check_in else "--:--" }}</p>
+                </div>
+                <div class="rounded-lg bg-slate-50 p-3">
+                    <p class="text-slate-500">Check-out</p>
+                    <p id="checkOutText" class="font-semibold">{{ today_record.check_out.strftime("%H:%M") if today_record and today_record.check_out else "--:--" }}</p>
+                </div>
+            </div>
+        </div>
+
+        <form action="{{ url_for('update_own_profile') }}" method="post" class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 class="text-lg font-semibold">Profile Layer</h2>
+            <div class="mt-4 space-y-3">
+                <input name="full_name" value="{{ current_user.profile.full_name }}" class="w-full rounded-lg border border-slate-300 px-3 py-3">
+                <input name="phone" value="{{ current_user.profile.phone or '' }}" placeholder="Phone" class="w-full rounded-lg border border-slate-300 px-3 py-3">
+                <input name="profile_pic" value="{{ current_user.profile.profile_pic or '' }}" placeholder="Profile image URL" class="w-full rounded-lg border border-slate-300 px-3 py-3">
+                <textarea name="address" rows="3" placeholder="Address" class="w-full rounded-lg border border-slate-300 px-3 py-3">{{ current_user.profile.address or "" }}</textarea>
+                <button class="rounded-lg bg-ink px-4 py-3 font-semibold text-white" type="submit">
+                    <i class="fa-solid fa-floppy-disk mr-2"></i> Save Profile
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div class="space-y-6">
+        <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <div class="flex items-center justify-between">
+                <h2 class="text-lg font-semibold">Monthly Attendance</h2>
+                <div class="flex gap-3 text-xs text-slate-500">
+                    <span><i class="fa-solid fa-circle text-emerald-500"></i> Present</span>
+                    <span><i class="fa-solid fa-circle text-rose-500"></i> Absent</span>
+                    <span><i class="fa-solid fa-circle text-blue-500"></i> Leave</span>
+                </div>
+            </div>
+            <div class="mt-5 grid grid-cols-7 gap-2">
+                {% for day in calendar_days %}
+                    {% set color = "bg-slate-100 text-slate-500" %}
+                    {% if day.status == "Present" %}{% set color = "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200" %}{% endif %}
+                    {% if day.status == "Absent" %}{% set color = "bg-rose-50 text-rose-700 ring-1 ring-rose-200" %}{% endif %}
+                    {% if day.status == "Leave" %}{% set color = "bg-blue-50 text-blue-700 ring-1 ring-blue-200" %}{% endif %}
+                    {% if day.status == "Half-day" %}{% set color = "bg-amber-50 text-amber-700 ring-1 ring-amber-200" %}{% endif %}
+                    <div class="aspect-square rounded-lg p-2 {{ color }}">
+                        <div class="flex h-full flex-col justify-between">
+                            <span class="text-sm font-semibold">{{ day.day }}</span>
+                            {% if day.status %}
+                                <span class="h-2 w-2 rounded-full {% if day.status == 'Present' %}bg-emerald-500{% elif day.status == 'Leave' %}bg-blue-500{% elif day.status == 'Half-day' %}bg-amber-500{% else %}bg-rose-500{% endif %}"></span>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="grid gap-6 xl:grid-cols-2">
+            <form action="{{ url_for('leave_apply') }}" method="post" class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <h2 class="text-lg font-semibold">Apply Leave</h2>
+                <div class="mt-4 space-y-3">
+                    <select name="leave_type" class="w-full rounded-lg border border-slate-300 px-3 py-3">
+                        <option>Casual Leave</option>
+                        <option>Sick Leave</option>
+                        <option>Earned Leave</option>
+                        <option>Unpaid Leave</option>
+                    </select>
+                    <input name="start_date" type="date" required class="w-full rounded-lg border border-slate-300 px-3 py-3">
+                    <input name="end_date" type="date" required class="w-full rounded-lg border border-slate-300 px-3 py-3">
+                    <textarea name="remarks" rows="3" placeholder="Remarks" class="w-full rounded-lg border border-slate-300 px-3 py-3"></textarea>
+                    <button class="rounded-lg bg-teal px-4 py-3 font-semibold text-white" type="submit">
+                        <i class="fa-solid fa-paper-plane mr-2"></i> Submit
+                    </button>
+                </div>
+            </form>
+
+            <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <h2 class="text-lg font-semibold">Leave Pipeline</h2>
+                <div class="mt-4 max-h-80 space-y-3 overflow-auto">
+                    {% for leave in leaves %}
+                        <div class="rounded-lg bg-slate-50 p-3 text-sm">
+                            <div class="flex items-center justify-between gap-3">
+                                <p class="font-semibold">{{ leave.leave_type }}</p>
+                                <span class="rounded-full px-2 py-1 text-xs font-semibold {% if leave.status == 'Approved' %}bg-emerald-100 text-emerald-700{% elif leave.status == 'Rejected' %}bg-rose-100 text-rose-700{% else %}bg-amber-100 text-amber-700{% endif %}">
+                                    {{ leave.status }}
+                                </span>
+                            </div>
+                            <p class="mt-1 text-slate-500">{{ leave.start_date }} to {{ leave.end_date }}</p>
+                            {% if leave.admin_comment %}<p class="mt-2 text-slate-600">{{ leave.admin_comment }}</p>{% endif %}
+                        </div>
+                    {% else %}
+                        <p class="text-sm text-slate-500">No leave requests yet.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById("attendanceButton").addEventListener("click", async () => {
+        const status = document.getElementById("attendanceStatus").value;
+        const response = await fetch("{{ url_for('attendance_toggle') }}", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({status})
+        });
+        const data = await response.json();
+        if (!data.ok) return;
+        document.getElementById("attendanceBadge").textContent = data.status;
+        document.getElementById("checkInText").textContent = data.check_in || "--:--";
+        document.getElementById("checkOutText").textContent = data.check_out || "--:--";
+        document.getElementById("attendanceButton").innerHTML = data.action === "checked_in"
+            ? '<i class="fa-solid fa-fingerprint mr-2"></i> Check out'
+            : '<i class="fa-solid fa-fingerprint mr-2"></i> Check in';
+    });
+</script>
+{% endblock %}
