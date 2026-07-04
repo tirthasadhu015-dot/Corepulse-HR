@@ -9,12 +9,12 @@ from sqlalchemy import event
 from werkzeug.security import check_password_hash, generate_password_hash
 
 
+IST_TIMEZONE = pytz.timezone("Asia/Kolkata")
 db = SQLAlchemy()
 
 
 def get_ist_time():
-    ist = pytz.timezone("Asia/Kolkata")
-    return datetime.now(ist).replace(tzinfo=None)
+    return datetime.now(IST_TIMEZONE).replace(tzinfo=None)
 
 
 class User(UserMixin, db.Model):
@@ -25,7 +25,7 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(255), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(20), nullable=False, default="employee", index=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=get_ist_time)
+    created_at = db.Column(db.DateTime, nullable=False, default=lambda: get_ist_time())
 
     profile = db.relationship(
         "Profile",
@@ -44,6 +44,12 @@ class User(UserMixin, db.Model):
         back_populates="user",
         cascade="all, delete-orphan",
         order_by="desc(LeaveRequest.created_at)",
+    )
+    user_queries = db.relationship(
+        "UserQuery",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        order_by="desc(UserQuery.created_at)",
     )
 
     def set_password(self, password):
@@ -154,12 +160,38 @@ class LeaveRequest(db.Model):
     remarks = db.Column(db.Text, nullable=True)
     status = db.Column(db.String(20), nullable=False, default="Pending", index=True)
     admin_comment = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=get_ist_time)
+    created_at = db.Column(db.DateTime, nullable=False, default=lambda: get_ist_time())
     updated_at = db.Column(
         db.DateTime,
         nullable=False,
-        default=get_ist_time,
-        onupdate=get_ist_time,
+        default=lambda: get_ist_time(),
+        onupdate=lambda: get_ist_time(),
     )
 
     user = db.relationship("User", back_populates="leave_requests")
+
+
+class UserQuery(db.Model):
+    __tablename__ = "user_queries"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    full_name = db.Column(db.String(120), nullable=False)
+    email = db.Column(db.String(255), nullable=False, index=True)
+    contact_number = db.Column(db.String(30), nullable=False)
+    query_description = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(20), nullable=False, default="Pending", index=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=lambda: get_ist_time())
+    updated_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        default=lambda: get_ist_time(),
+        onupdate=lambda: get_ist_time(),
+    )
+
+    user = db.relationship("User", back_populates="user_queries")

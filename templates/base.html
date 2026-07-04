@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block title %}AlignHR{% endblock %}</title>
+    <title>{% block title %}Corepulse-HR{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
@@ -38,19 +38,27 @@
                 <span class="portal-badge h-10 w-10 rounded-xl">
                     <i class="fa-solid fa-people-group"></i>
                 </span>
-                <span class="text-xl">AlignHR</span>
+                <span class="text-xl">Corepulse-HR</span>
             </a>
             <div class="flex items-center gap-2 text-sm">
                 <div class="hidden rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-slate-600 sm:flex">
-                    <i class="fa-solid fa-building mr-2"></i> Office Portal
+                    <i class="fa-solid fa-building mr-2"></i> Corporate Portal
                 </div>
                 {% if current_user.is_authenticated %}
                     <span class="hidden rounded-full bg-slate-100 px-3 py-2 text-slate-600 sm:inline">{{ current_user.email }}</span>
+                    <a href="{{ url_for('admin_dashboard' if current_user.is_admin else 'employee_dashboard') }}" class="rounded-xl border border-slate-300 px-3 py-2 font-medium text-slate-700 hover:bg-slate-50">
+                        <i class="fa-solid fa-gauge-high mr-1"></i> Dashboard
+                    </a>
                     <a href="{{ url_for('logout') }}" class="rounded-xl border border-slate-300 px-3 py-2 font-medium text-slate-700 hover:bg-slate-50">
                         <i class="fa-solid fa-right-from-bracket mr-1"></i> Logout
                     </a>
                 {% else %}
-                    <span class="rounded-full bg-slate-100 px-3 py-2 text-slate-600">{{ now.strftime("%d %b %Y") }}</span>
+                    <a href="{{ url_for('login') }}?role=employee" class="rounded-xl border border-slate-300 px-3 py-2 font-medium text-slate-700 hover:bg-slate-50">
+                        <i class="fa-solid fa-user mr-1"></i> Employee Login
+                    </a>
+                    <a href="{{ url_for('login') }}?role=hr" class="rounded-xl bg-brand px-3 py-2 font-medium text-white shadow-sm hover:bg-blue-700">
+                        <i class="fa-solid fa-user-shield mr-1"></i> HR Login
+                    </a>
                 {% endif %}
             </div>
         </nav>

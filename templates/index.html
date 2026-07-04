@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Corepulse-HR | Human Capital Platform{% endblock %}
+
+{% block content %}
+<section class="grid gap-8 py-8 lg:grid-cols-[1.1fr_.9fr] lg:items-center">
+    <div class="portal-card p-8 shadow-soft sm:p-10">
+        <p class="text-sm font-semibold uppercase tracking-[0.24em] text-teal">Corepulse-HR</p>
+        <h1 class="mt-4 text-4xl font-semibold tracking-tight text-ink sm:text-5xl">Every workday, perfectly aligned.</h1>
+        <p class="mt-5 max-w-2xl text-lg leading-8 text-slate-600">
+            Bring attendance, approvals, employee engagement, and secure HR operations into one premium workplace experience designed for modern teams.
+        </p>
+        <div class="mt-8 flex flex-wrap gap-3">
+            <a href="{{ url_for('login') }}?role=employee" class="rounded-xl bg-brand px-5 py-3 font-semibold text-white shadow-sm hover:bg-blue-700">
+                <i class="fa-solid fa-user mr-2"></i> Employee Login
+            </a>
+            <a href="{{ url_for('login') }}?role=hr" class="rounded-xl border border-slate-300 px-5 py-3 font-semibold text-slate-700 hover:bg-slate-50">
+                <i class="fa-solid fa-user-shield mr-2"></i> HR Login
+            </a>
+        </div>
+        <div class="mt-8 grid gap-4 sm:grid-cols-3">
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p class="text-2xl font-semibold text-ink">24/7</p>
+                <p class="mt-1 text-sm text-slate-500">Secure HR operations</p>
+            </div>
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p class="text-2xl font-semibold text-ink">IST</p>
+                <p class="mt-1 text-sm text-slate-500">Timezone-safe attendance</p>
+            </div>
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p class="text-2xl font-semibold text-ink">1-click</p>
+                <p class="mt-1 text-sm text-slate-500">Employee query handling</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="portal-card p-6 shadow-soft sm:p-8">
+        <div class="flex items-center gap-3">
+            <span class="flex h-11 w-11 items-center justify-center rounded-full bg-brand/10 text-brand">
+                <i class="fa-solid fa-comment-dots"></i>
+            </span>
+            <div>
+                <h2 class="text-xl font-semibold text-ink">Public Query Input</h2>
+                <p class="text-sm text-slate-500">Share a concern, request, or feedback with our team.</p>
+            </div>
+        </div>
+
+        <form action="{{ url_for('submit_query') }}" method="post" class="mt-6 space-y-4">
+            <label class="block">
+                <span class="text-sm font-medium text-slate-700">Full Name</span>
+                <input name="full_name" required class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-brand focus:ring-4 focus:ring-blue-100" placeholder="Aarav Sharma">
+            </label>
+            <label class="block">
+                <span class="text-sm font-medium text-slate-700">Email</span>
+                <input name="email" type="email" required class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-brand focus:ring-4 focus:ring-blue-100" placeholder="you@company.com">
+            </label>
+            <label class="block">
+                <span class="text-sm font-medium text-slate-700">Contact Number</span>
+                <input name="contact_number" required class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-brand focus:ring-4 focus:ring-blue-100" placeholder="+91 98765 43210">
+            </label>
+            <label class="block">
+                <span class="text-sm font-medium text-slate-700">Query Description</span>
+                <textarea name="query_description" rows="5" required class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-brand focus:ring-4 focus:ring-blue-100" placeholder="Tell us how we can assist you today."></textarea>
+            </label>
+            <button class="w-full rounded-xl bg-teal px-4 py-3 font-semibold text-white shadow-sm hover:bg-emerald-800" type="submit">
+                <i class="fa-solid fa-paper-plane mr-2"></i> Submit Query
+            </button>
+        </form>
+    </div>
+</section>
+
+<footer class="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-soft">
+    <div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+            <p class="text-sm font-semibold uppercase tracking-[0.24em] text-teal">Contact Matrix</p>
+            <h3 class="mt-2 text-xl font-semibold text-ink">Stay connected with Corepulse-HR</h3>
+        </div>
+        <div class="grid gap-4 sm:grid-cols-3">
+            <div>
+                <p class="text-sm font-semibold text-slate-700">Phone</p>
+                <p class="mt-1 text-sm text-slate-500">+91 98765 43210</p>
+            </div>
+            <div>
+                <p class="text-sm font-semibold text-slate-700">Email</p>
+                <p class="mt-1 text-sm text-slate-500">support@corepulsehr.com</p>
+            </div>
+            <div>
+                <p class="text-sm font-semibold text-slate-700">Address</p>
+                <p class="mt-1 text-sm text-slate-500">Asansol Engineering College, Asansol, West Bengal, India</p>
+            </div>
+        </div>
+    </div>
+</footer>
+{% endblock %}

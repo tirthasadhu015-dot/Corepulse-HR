@@ -22,7 +22,7 @@ from flask_login import (
 )
 from sqlalchemy import func
 
-from models import Attendance, LeaveRequest, Profile, User, db, get_ist_time
+from models import Attendance, LeaveRequest, Profile, User, UserQuery, db, get_ist_time
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -57,9 +57,7 @@ def create_app():
 
     @app.route("/")
     def index():
-        if not current_user.is_authenticated:
-            return redirect(url_for("login"))
-        return redirect(url_for("admin_dashboard" if current_user.is_admin else "employee_dashboard"))
+        return render_template("index.html")
 
     @app.route("/login", methods=["GET", "POST"])
     def login():
@@ -90,6 +88,29 @@ def create_app():
         logout_user()
         flash("You have been signed out.", "info")
         return redirect(url_for("login"))
+
+    @app.route("/submit-query", methods=["POST"])
+    def submit_query():
+        full_name = request.form.get("full_name", "").strip()
+        email = request.form.get("email", "").strip().lower()
+        contact_number = request.form.get("contact_number", "").strip()
+        query_description = request.form.get("query_description", "").strip()
+
+        if not all([full_name, email, contact_number, query_description]):
+            flash("Please complete every query field before sending your message.", "danger")
+            return redirect(url_for("index"))
+
+        query = UserQuery(
+            user_id=current_user.id if current_user.is_authenticated else None,
+            full_name=full_name,
+            email=email,
+            contact_number=contact_number,
+            query_description=query_description,
+        )
+        db.session.add(query)
+        db.session.commit()
+        flash("Your query has been captured successfully. Our team will review it shortly.", "success")
+        return redirect(url_for("index"))
 
     @app.route("/employee")
     @login_required
@@ -141,11 +162,13 @@ def create_app():
         )
         pending_leaves = LeaveRequest.query.filter_by(status="Pending").order_by(LeaveRequest.created_at.asc()).all()
         all_leaves = LeaveRequest.query.order_by(LeaveRequest.created_at.desc()).limit(25).all()
+        public_queries = UserQuery.query.order_by(UserQuery.created_at.desc()).all()
         metrics = {
             "employees": User.query.filter(User.role == "employee").count(),
             "admins": User.query.filter(User.role.in_(["admin", "hr"])).count(),
             "present_today": Attendance.query.filter_by(date=today_ist, status="Present").count(),
             "pending_leaves": LeaveRequest.query.filter_by(status="Pending").count(),
+            "pending_queries": UserQuery.query.filter_by(status="Pending").count(),
         }
         return render_template(
             "admin_dashboard.html",
@@ -153,6 +176,7 @@ def create_app():
             today_logs=today_logs,
             pending_leaves=pending_leaves,
             all_leaves=all_leaves,
+            public_queries=public_queries,
             metrics=metrics,
         )
 
@@ -182,6 +206,16 @@ def create_app():
         user.role = request.form.get("role", user.role)
         db.session.commit()
         flash("Employee profile and payroll matrix updated.", "success")
+        return redirect(url_for("admin_dashboard"))
+
+    @app.route("/admin/query/<int:query_id>/resolve", methods=["POST"])
+    @login_required
+    @admin_required
+    def resolve_query(query_id):
+        query = db.session.get(UserQuery, query_id) or abort(404)
+        query.status = "Resolved"
+        db.session.commit()
+        flash("Query marked as resolved.", "success")
         return redirect(url_for("admin_dashboard"))
 
     @app.route("/attendance/toggle", methods=["POST"])
@@ -259,7 +293,7 @@ def create_app():
                 return jsonify(
                     {
                         "ok": False,
-                        "message": "Minimum 4 hours required for half-day checkout.",
+                        "message": "Minimum 4 hours required before checkout. Please continue working or select Leave/Absent.",
                     }
                 ), 400
             elif elapsed_hours < 8:
@@ -428,7 +462,7 @@ def ensure_gitignore_entry(entry):
 def seed_default_admin():
     if User.query.filter(User.role.in_(["admin", "hr"])).first():
         return
-    admin = User(employee_id="ADM-0001", email="admin@alignhr.com", role="admin")
+    admin = User(employee_id=User.generate_employee_id(), email="admin@alignhr.com", role="admin")
     admin.set_password("admin123")
     admin.profile = Profile(
         full_name="AlignHR Administrator",

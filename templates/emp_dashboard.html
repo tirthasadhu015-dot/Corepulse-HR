@@ -84,6 +84,9 @@
                     <p id="checkOutText" class="font-semibold">{{ today_record.check_out.strftime("%H:%M") if today_record and today_record.check_out else "--:--" }}</p>
                 </div>
             </div>
+            <p class="mt-4 text-sm text-slate-500">
+                Attendance rules stay enforced: Present needs at least 8 hours, Half-day ranges from 4 to 8 hours, and checkout is blocked below 4 hours unless the day is marked Leave.
+            </p>
         </div>
 
         <form action="{{ url_for('update_own_profile') }}" method="post" class="portal-card p-5">
