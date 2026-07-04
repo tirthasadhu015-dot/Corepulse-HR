@@ -341,7 +341,6 @@ def admin_required(view):
 
 
 def register_employee():
-    employee_id = request.form.get("employee_id", "").strip()
     email = request.form.get("email", "").strip().lower()
     password = request.form.get("password", "")
     role = request.form.get("role", "employee")
@@ -349,19 +348,23 @@ def register_employee():
 
     if role not in {"employee", "hr"}:
         role = "employee"
-    if not employee_id or not email or len(password) < 6:
-        flash("Employee ID, email, and a 6+ character password are required.", "danger")
+    if not email or len(password) < 6:
+        flash("Email and a 6+ character password are required.", "danger")
         return redirect(url_for("login"))
-    if User.query.filter((User.email == email) | (User.employee_id == employee_id)).first():
-        flash("An account already exists for that Employee ID or email.", "danger")
+    if User.query.filter_by(email=email).first():
+        flash("An account already exists for that email.", "danger")
         return redirect(url_for("login"))
 
+    employee_id = User.generate_employee_id()
     user = User(employee_id=employee_id, email=email, role=role)
     user.set_password(password)
     user.profile = Profile(full_name=full_name, job_title="HR Officer" if role == "hr" else "Employee")
     db.session.add(user)
     db.session.commit()
-    flash("Account created. You can sign in now.", "success")
+    flash(
+        f"Account created successfully! Your Auto-Generated Employee ID is: {user.employee_id}",
+        "success",
+    )
     return redirect(url_for("login"))
 
 

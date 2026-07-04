@@ -1,9 +1,11 @@
+import re
 from datetime import datetime
 
 import pytz
 
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import event
 from werkzeug.security import check_password_hash, generate_password_hash
 
 
@@ -50,9 +52,48 @@ class User(UserMixin, db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
+    @staticmethod
+    def generate_employee_id(connection=None):
+        current_year = get_ist_time().year
+        prefix = f"EMP-{current_year}-"
+        pattern = re.compile(rf"^{re.escape(prefix)}(\d{{4}})$")
+
+        if connection is not None:
+            employee_ids = [
+                row[0]
+                for row in connection.execute(
+                    db.select(User.employee_id)
+                    .where(User.employee_id.like(f"{prefix}%"))
+                    .order_by(User.employee_id.desc())
+                ).fetchall()
+            ]
+        else:
+            employee_ids = [
+                employee_id
+                for (employee_id,) in db.session.query(User.employee_id)
+                .filter(User.employee_id.like(f"{prefix}%"))
+                .order_by(User.employee_id.desc())
+                .all()
+            ]
+
+        latest_sequence = 0
+        for employee_id in employee_ids:
+            match = pattern.match(employee_id)
+            if match:
+                latest_sequence = int(match.group(1))
+                break
+
+        return f"{prefix}{latest_sequence + 1:04d}"
+
     @property
     def is_admin(self):
         return self.role in {"admin", "hr"}
+
+
+@event.listens_for(User, "before_insert")
+def assign_employee_id(mapper, connection, target):
+    if not target.employee_id:
+        target.employee_id = User.generate_employee_id(connection=connection)
 
 
 class Profile(db.Model):
