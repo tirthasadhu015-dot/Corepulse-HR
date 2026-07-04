@@ -6,6 +6,7 @@
     <title>{% block title %}AlignHR{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <script>
         tailwind.config = {
             theme: {
@@ -31,22 +32,25 @@
     </style>
 </head>
 <body class="min-h-screen bg-mist text-ink antialiased">
-    <header class="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
+    <header class="sticky top-0 z-30 border-b border-slate-200/80 bg-white/80 backdrop-blur-xl">
         <nav class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
             <a href="{{ url_for('index') }}" class="flex items-center gap-3 font-semibold tracking-tight">
-                <span class="grid h-10 w-10 place-items-center rounded-lg bg-brand text-white shadow-sm">
+                <span class="portal-badge h-10 w-10 rounded-xl">
                     <i class="fa-solid fa-people-group"></i>
                 </span>
                 <span class="text-xl">AlignHR</span>
             </a>
-            <div class="flex items-center gap-3 text-sm">
+            <div class="flex items-center gap-2 text-sm">
+                <div class="hidden rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-slate-600 sm:flex">
+                    <i class="fa-solid fa-building mr-2"></i> Office Portal
+                </div>
                 {% if current_user.is_authenticated %}
-                    <span class="hidden text-slate-500 sm:inline">{{ current_user.email }}</span>
-                    <a href="{{ url_for('logout') }}" class="rounded-lg border border-slate-300 px-3 py-2 font-medium hover:bg-slate-50">
+                    <span class="hidden rounded-full bg-slate-100 px-3 py-2 text-slate-600 sm:inline">{{ current_user.email }}</span>
+                    <a href="{{ url_for('logout') }}" class="rounded-xl border border-slate-300 px-3 py-2 font-medium text-slate-700 hover:bg-slate-50">
                         <i class="fa-solid fa-right-from-bracket mr-1"></i> Logout
                     </a>
                 {% else %}
-                    <span class="text-slate-500">{{ now.strftime("%d %b %Y") }}</span>
+                    <span class="rounded-full bg-slate-100 px-3 py-2 text-slate-600">{{ now.strftime("%d %b %Y") }}</span>
                 {% endif %}
             </div>
         </nav>

@@ -1,0 +1,102 @@
+:root {
+    --bg: #f3f6fb;
+    --bg-soft: #eef4ff;
+    --panel: #ffffff;
+    --ink: #0f172a;
+    --muted: #64748b;
+    --border: #e2e8f0;
+    --brand: #2563eb;
+    --brand-deep: #123a8a;
+    --teal: #0f766e;
+    --success: #047857;
+    --warning: #b45309;
+    --danger: #dc2626;
+}
+
+body {
+    font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+    background: linear-gradient(135deg, var(--bg) 0%, var(--bg-soft) 100%);
+}
+
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background-image: radial-gradient(circle at top left, rgba(37, 99, 235, 0.16), transparent 28%), radial-gradient(circle at bottom right, rgba(15, 118, 110, 0.16), transparent 25%);
+    pointer-events: none;
+    z-index: -1;
+}
+
+.portal-card {
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.94);
+    border-radius: 24px;
+    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+    backdrop-filter: blur(10px);
+}
+
+.portal-card-soft {
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.96) 100%);
+    border-radius: 20px;
+}
+
+.portal-stat {
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    background: linear-gradient(145deg, #ffffff 0%, #f8fbff 100%);
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+}
+
+.portal-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    border-radius: 999px;
+    padding: 0.4rem 0.7rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border: 1px solid var(--border);
+    background: #f8fafc;
+    color: var(--muted);
+}
+
+.portal-table thead {
+    background: #f8fafc;
+}
+
+.portal-table th,
+.portal-table td {
+    padding: 0.9rem 1rem;
+}
+
+.portal-table tbody tr:hover {
+    background: #f8fbff;
+}
+
+.portal-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+    border-radius: 999px;
+    color: white;
+    background: linear-gradient(135deg, var(--brand) 0%, var(--teal) 100%);
+    box-shadow: 0 10px 20px rgba(37, 99, 235, 0.2);
+}
+
+.portal-link {
+    color: var(--brand);
+    font-weight: 600;
+}
+
+.portal-link:hover {
+    color: var(--brand-deep);
+}
+
+@media (max-width: 640px) {
+    .portal-card {
+        border-radius: 18px;
+    }
+}
