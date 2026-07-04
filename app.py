@@ -2,6 +2,7 @@ from calendar import monthrange
 from datetime import date, datetime
 from pathlib import Path
 
+import pytz
 from flask import (
     Flask,
     abort,
@@ -21,7 +22,7 @@ from flask_login import (
 )
 from sqlalchemy import func
 
-from models import Attendance, LeaveRequest, Profile, User, db
+from models import Attendance, LeaveRequest, Profile, User, db, get_ist_time
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -37,6 +38,7 @@ def create_app():
     app.config["SECRET_KEY"] = "replace-this-with-a-secure-env-secret"
     app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{DATABASE_PATH.as_posix()}"
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    app.config["APP_TIMEZONE"] = pytz.timezone("Asia/Kolkata").zone
 
     db.init_app(app)
 
@@ -51,7 +53,7 @@ def create_app():
 
     @app.context_processor
     def inject_now():
-        return {"now": datetime.utcnow()}
+        return {"now": get_ist_time()}
 
     @app.route("/")
     def index():
@@ -95,7 +97,8 @@ def create_app():
         if current_user.is_admin:
             return redirect(url_for("admin_dashboard"))
 
-        today_record = Attendance.query.filter_by(user_id=current_user.id, date=date.today()).first()
+        today_ist = get_ist_time().date()
+        today_record = Attendance.query.filter_by(user_id=current_user.id, date=today_ist).first()
         attendance = Attendance.query.filter_by(user_id=current_user.id).order_by(Attendance.date.desc()).limit(45).all()
         leaves = LeaveRequest.query.filter_by(user_id=current_user.id).order_by(LeaveRequest.created_at.desc()).all()
 
@@ -129,8 +132,9 @@ def create_app():
     @admin_required
     def admin_dashboard():
         users = User.query.order_by(User.created_at.desc()).all()
+        today_ist = get_ist_time().date()
         today_logs = (
-            Attendance.query.filter_by(date=date.today())
+            Attendance.query.filter_by(date=today_ist)
             .join(User)
             .order_by(Attendance.check_in.desc().nullslast())
             .all()
@@ -140,7 +144,7 @@ def create_app():
         metrics = {
             "employees": User.query.filter(User.role == "employee").count(),
             "admins": User.query.filter(User.role.in_(["admin", "hr"])).count(),
-            "present_today": Attendance.query.filter_by(date=date.today(), status="Present").count(),
+            "present_today": Attendance.query.filter_by(date=today_ist, status="Present").count(),
             "pending_leaves": LeaveRequest.query.filter_by(status="Pending").count(),
         }
         return render_template(
@@ -191,20 +195,85 @@ def create_app():
         if desired_status not in {"Present", "Absent", "Half-day", "Leave"}:
             return jsonify({"ok": False, "message": "Invalid attendance status."}), 400
 
-        now = datetime.utcnow()
-        record = Attendance.query.filter_by(user_id=current_user.id, date=date.today()).first()
+        now_ist = get_ist_time()
+        today_ist = now_ist.date()
+
+        approved_leave_today = LeaveRequest.query.filter(
+            LeaveRequest.user_id == current_user.id,
+            LeaveRequest.status == "Approved",
+            LeaveRequest.start_date <= today_ist,
+            LeaveRequest.end_date >= today_ist,
+        ).first()
+
+        record = Attendance.query.filter_by(user_id=current_user.id, date=today_ist).first()
+
+        if record and record.status == "Absent":
+            return jsonify(
+                {
+                    "ok": False,
+                    "disabled": True,
+                    "status": "Absent",
+                    "message": "Status: Absent (Check-in Disabled)",
+                    "check_in": None,
+                    "check_out": None,
+                }
+            ), 403
+
+        if desired_status == "Absent":
+            if not record:
+                record = Attendance(user_id=current_user.id, date=today_ist)
+                db.session.add(record)
+            record.check_in = None
+            record.check_out = None
+            record.status = "Absent"
+            db.session.commit()
+            return jsonify(
+                {
+                    "ok": True,
+                    "action": "disabled",
+                    "disabled": True,
+                    "status": record.status,
+                    "message": "Status: Absent (Check-in Disabled)",
+                    "check_in": None,
+                    "check_out": None,
+                }
+            )
+
         if not record:
-            record = Attendance(user_id=current_user.id, date=date.today(), check_in=now, status=desired_status)
+            record = Attendance(
+                user_id=current_user.id,
+                date=today_ist,
+                check_in=now_ist,
+                status="Leave" if approved_leave_today or desired_status == "Leave" else "Present",
+            )
             db.session.add(record)
             action = "checked_in"
         elif record.check_in and not record.check_out:
-            record.check_out = now
-            record.status = desired_status
+            elapsed_hours = (now_ist - record.check_in).total_seconds() / 3600
+            if now_ist <= record.check_in:
+                return jsonify({"ok": False, "message": "Check-out must be after check-in."}), 400
+
+            if approved_leave_today or desired_status == "Leave" or record.status == "Leave":
+                final_status = "Leave"
+            elif elapsed_hours < 4:
+                return jsonify(
+                    {
+                        "ok": False,
+                        "message": "Minimum 4 hours required for half-day checkout.",
+                    }
+                ), 400
+            elif elapsed_hours < 8:
+                final_status = "Half-day"
+            else:
+                final_status = "Present"
+
+            record.check_out = now_ist
+            record.status = final_status
             action = "checked_out"
         else:
-            record.check_in = now
+            record.check_in = now_ist
             record.check_out = None
-            record.status = desired_status
+            record.status = "Leave" if approved_leave_today or desired_status == "Leave" else "Present"
             action = "checked_in"
 
         db.session.commit()
@@ -212,6 +281,7 @@ def create_app():
             {
                 "ok": True,
                 "action": action,
+                "disabled": False,
                 "status": record.status,
                 "check_in": record.check_in.strftime("%H:%M") if record.check_in else None,
                 "check_out": record.check_out.strftime("%H:%M") if record.check_out else None,
@@ -305,7 +375,7 @@ def decide_leave(leave_id, status):
 
 
 def build_calendar_payload(user_id):
-    today = date.today()
+    today = get_ist_time().date()
     _, days_in_month = monthrange(today.year, today.month)
     attendance_by_day = {
         record.date.day: record.status

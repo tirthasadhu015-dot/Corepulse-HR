@@ -47,9 +47,17 @@
                         <option value="{{ status }}" {% if today_record and today_record.status == status %}selected{% endif %}>{{ status }}</option>
                     {% endfor %}
                 </select>
-                <button id="attendanceButton" class="rounded-lg bg-brand px-4 py-3 font-semibold text-white hover:bg-blue-700">
+                <button
+                    id="attendanceButton"
+                    class="rounded-lg bg-brand px-4 py-3 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600"
+                    {% if today_record and today_record.status == "Absent" %}disabled{% endif %}
+                >
                     <i class="fa-solid fa-fingerprint mr-2"></i>
-                    {{ "Check out" if today_record and today_record.check_in and not today_record.check_out else "Check in" }}
+                    {% if today_record and today_record.status == "Absent" %}
+                        Disabled
+                    {% else %}
+                        {{ "Check out" if today_record and today_record.check_in and not today_record.check_out else "Check in" }}
+                    {% endif %}
                 </button>
             </div>
             <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
@@ -152,19 +160,59 @@
 
 {% block scripts %}
 <script>
-    document.getElementById("attendanceButton").addEventListener("click", async () => {
-        const status = document.getElementById("attendanceStatus").value;
+    const attendanceButton = document.getElementById("attendanceButton");
+    const attendanceStatus = document.getElementById("attendanceStatus");
+    const attendanceBadge = document.getElementById("attendanceBadge");
+    const checkInText = document.getElementById("checkInText");
+    const checkOutText = document.getElementById("checkOutText");
+
+    function setAbsentDisabled(isDisabled) {
+        attendanceButton.disabled = isDisabled;
+        if (isDisabled) {
+            attendanceBadge.textContent = "Status: Absent (Check-in Disabled)";
+            attendanceButton.innerHTML = '<i class="fa-solid fa-ban mr-2"></i> Disabled';
+        }
+    }
+
+    setAbsentDisabled(attendanceStatus.value === "Absent");
+
+    attendanceStatus.addEventListener("change", () => {
+        if (attendanceStatus.value === "Absent") {
+            setAbsentDisabled(true);
+            return;
+        }
+
+        attendanceButton.disabled = false;
+        attendanceBadge.textContent = attendanceStatus.value;
+        attendanceButton.innerHTML = checkInText.textContent !== "--:--" && checkOutText.textContent === "--:--"
+            ? '<i class="fa-solid fa-fingerprint mr-2"></i> Check out'
+            : '<i class="fa-solid fa-fingerprint mr-2"></i> Check in';
+    });
+
+    attendanceButton.addEventListener("click", async () => {
+        const status = attendanceStatus.value;
+        const timestamp = new Date().toISOString();
         const response = await fetch("{{ url_for('attendance_toggle') }}", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({status})
+            body: JSON.stringify({status, timestamp})
         });
         const data = await response.json();
-        if (!data.ok) return;
-        document.getElementById("attendanceBadge").textContent = data.status;
-        document.getElementById("checkInText").textContent = data.check_in || "--:--";
-        document.getElementById("checkOutText").textContent = data.check_out || "--:--";
-        document.getElementById("attendanceButton").innerHTML = data.action === "checked_in"
+
+        if (!data.ok) {
+            alert(data.message || "Attendance update failed.");
+            return;
+        }
+
+        if (data.disabled) {
+            setAbsentDisabled(true);
+            return;
+        }
+
+        attendanceBadge.textContent = data.status;
+        checkInText.textContent = data.check_in || "--:--";
+        checkOutText.textContent = data.check_out || "--:--";
+        attendanceButton.innerHTML = data.action === "checked_in"
             ? '<i class="fa-solid fa-fingerprint mr-2"></i> Check out'
             : '<i class="fa-solid fa-fingerprint mr-2"></i> Check in';
     });

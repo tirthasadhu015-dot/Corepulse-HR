@@ -1,4 +1,6 @@
-from datetime import date, datetime
+from datetime import datetime
+
+import pytz
 
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
@@ -6,6 +8,11 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 
 db = SQLAlchemy()
+
+
+def get_ist_time():
+    ist = pytz.timezone("Asia/Kolkata")
+    return datetime.now(ist).replace(tzinfo=None)
 
 
 class User(UserMixin, db.Model):
@@ -16,7 +23,7 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(255), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(20), nullable=False, default="employee", index=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=get_ist_time)
 
     profile = db.relationship(
         "Profile",
@@ -82,7 +89,7 @@ class Attendance(db.Model):
         nullable=False,
         index=True,
     )
-    date = db.Column(db.Date, nullable=False, default=date.today, index=True)
+    date = db.Column(db.Date, nullable=False, default=lambda: get_ist_time().date(), index=True)
     check_in = db.Column(db.DateTime, nullable=True)
     check_out = db.Column(db.DateTime, nullable=True)
     status = db.Column(db.String(20), nullable=False, default="Absent", index=True)
@@ -106,12 +113,12 @@ class LeaveRequest(db.Model):
     remarks = db.Column(db.Text, nullable=True)
     status = db.Column(db.String(20), nullable=False, default="Pending", index=True)
     admin_comment = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=get_ist_time)
     updated_at = db.Column(
         db.DateTime,
         nullable=False,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=get_ist_time,
+        onupdate=get_ist_time,
     )
 
     user = db.relationship("User", back_populates="leave_requests")
